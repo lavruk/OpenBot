@@ -55,7 +55,7 @@
 //------------------------------------------------------//
 
 // Setup the OpenBot version (DIY, PCB_V1, PCB_V2, RTR_TT, RC_CAR, LITE, RTR_TT2, RTR_520, DIY_ESP32, DIY_RC)
-#define OPENBOT DIY
+#define OPENBOT DIY_RC
 
 //------------------------------------------------------//
 // SETTINGS - Global settings
@@ -539,6 +539,7 @@ const float ADC_FACTOR = 5.0 / 1023; // Based on RC_CAR / NANO
 #define HAS_SPEED_SENSORS_BACK 0
 #define HAS_SPEED_SENSORS_MIDDLE 0
 #define HAS_OLED 0
+#define HAS_BUMPER 0
 // #define HAS_LEDS_FRONT 0 // Assuming no extra LEDs for now
 // #define HAS_LEDS_BACK 0
 // #define HAS_LEDS_STATUS 0
@@ -1308,57 +1309,57 @@ void coast_right_motors_mtv() {
 
 #else
 
-void update_left_motors() {
-  if (ctrl_left < 0) {
-    analogWrite(PIN_PWM_L1, -ctrl_left);
-    analogWrite(PIN_PWM_L2, 0);
-  } else if (ctrl_left > 0) {
-    analogWrite(PIN_PWM_L1, 0);
-    analogWrite(PIN_PWM_L2, ctrl_left);
-  } else {
-    if (coast_mode) {
-      coast_left_motors();
-    } else {
-      stop_left_motors();
-    }
-  }
-}
+// void update_left_motors() {
+//   if (ctrl_left < 0) {
+//     analogWrite(PIN_PWM_L1, -ctrl_left);
+//     analogWrite(PIN_PWM_L2, 0);
+//   } else if (ctrl_left > 0) {
+//     analogWrite(PIN_PWM_L1, 0);
+//     analogWrite(PIN_PWM_L2, ctrl_left);
+//   } else {
+//     if (coast_mode) {
+//       coast_left_motors();
+//     } else {
+//       stop_left_motors();
+//     }
+//   }
+// }
 
-void stop_left_motors() {
-  analogWrite(PIN_PWM_L1, 255);
-  analogWrite(PIN_PWM_L2, 255);
-}
+// void stop_left_motors() {
+//   analogWrite(PIN_PWM_L1, 255);
+//   analogWrite(PIN_PWM_L2, 255);
+// }
 
-void coast_left_motors() {
-  analogWrite(PIN_PWM_L1, 0);
-  analogWrite(PIN_PWM_L2, 0);
-}
+// void coast_left_motors() {
+//   analogWrite(PIN_PWM_L1, 0);
+//   analogWrite(PIN_PWM_L2, 0);
+// }
 
-void update_right_motors() {
-  if (ctrl_right < 0) {
-    analogWrite(PIN_PWM_R1, -ctrl_right);
-    analogWrite(PIN_PWM_R2, 0);
-  } else if (ctrl_right > 0) {
-    analogWrite(PIN_PWM_R1, 0);
-    analogWrite(PIN_PWM_R2, ctrl_right);
-  } else {
-    if (coast_mode) {
-      coast_right_motors();
-    } else {
-      stop_right_motors();
-    }
-  }
-}
+// void update_right_motors() {
+//   if (ctrl_right < 0) {
+//     analogWrite(PIN_PWM_R1, -ctrl_right);
+//     analogWrite(PIN_PWM_R2, 0);
+//   } else if (ctrl_right > 0) {
+//     analogWrite(PIN_PWM_R1, 0);
+//     analogWrite(PIN_PWM_R2, ctrl_right);
+//   } else {
+//     if (coast_mode) {
+//       coast_right_motors();
+//     } else {
+//       stop_right_motors();
+//     }
+//   }
+// }
 
-void stop_right_motors() {
-  analogWrite(PIN_PWM_R1, 255);
-  analogWrite(PIN_PWM_R2, 255);
-}
+// void stop_right_motors() {
+//   analogWrite(PIN_PWM_R1, 255);
+//   analogWrite(PIN_PWM_R2, 255);
+// }
 
-void coast_right_motors() {
-  analogWrite(PIN_PWM_R1, 0);
-  analogWrite(PIN_PWM_R2, 0);
-}
+// void coast_right_motors() {
+//   analogWrite(PIN_PWM_R1, 0);
+//   analogWrite(PIN_PWM_R2, 0);
+// }
 
 #endif
 
