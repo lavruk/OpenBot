@@ -807,7 +807,7 @@ void setup() {
   ESC.attach(PIN_PWM_T, 1000, 2000);    // (pin, min pulse width, max pulse width in microseconds)
   SERVO.attach(PIN_PWM_S, 1000, 2000);  // (pin, min pulse width, max pulse width in microseconds)
 #endif
-#if (MCU == NANO)
+#if (MCU == NANO &&         (OPENBOT == DIY || OPENBOT == PCB_V1 || OPENBOT == PCB_V2 || OPENBOT == RTR_TT || OPENBOT == LITE))
   pinMode(PIN_PWM_L1, OUTPUT);
   pinMode(PIN_PWM_L2, OUTPUT);
   pinMode(PIN_PWM_R1, OUTPUT);
