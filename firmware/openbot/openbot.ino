@@ -48,12 +48,13 @@
 #define RTR_520 7    // Ready-to-Run with 520-motors
 #define MTV 8        // Multi Terrain Vehicle
 #define DIY_ESP32 9  // DIY without PCB
+#define DIY_RC 10    // DIY RC version
 
 //------------------------------------------------------//
 // SETUP - Choose your body
 //------------------------------------------------------//
 
-// Setup the OpenBot version (DIY, PCB_V1, PCB_V2, RTR_TT, RC_CAR, LITE, RTR_TT2, RTR_520, DIY_ESP32)
+// Setup the OpenBot version (DIY, PCB_V1, PCB_V2, RTR_TT, RC_CAR, LITE, RTR_TT2, RTR_520, DIY_ESP32, DIY_RC)
 #define OPENBOT DIY
 
 //------------------------------------------------------//
@@ -520,6 +521,48 @@ const int PIN_TRIGGER = 25;
 const int PIN_ECHO = 26;
 const int PIN_LED_LI = 22;
 const int PIN_LED_RI = 16;
+
+//-------------------------DIY_RC-----------------------//
+#elif (OPENBOT == DIY_RC)
+const String robot_type = "DIY_RC";
+#define MCU NANO
+#define HAS_VOLTAGE_DIVIDER 0
+// const float VOLTAGE_DIVIDER_FACTOR = (20 + 10) / 10; // Not needed if HAS_VOLTAGE_DIVIDER is 0
+const float VOLTAGE_MIN = 0.0f; // Based on RC_CAR
+const float VOLTAGE_LOW = 6.4f; // Based on RC_CAR
+const float VOLTAGE_MAX = 8.4f; // Based on RC_CAR
+const float ADC_FACTOR = 5.0 / 1023; // Based on RC_CAR / NANO
+#define HAS_INDICATORS 0
+#define HAS_SONAR 0
+// #define SONAR_MEDIAN 0 // Not needed if HAS_SONAR is 0
+#define HAS_SPEED_SENSORS_FRONT 0
+#define HAS_SPEED_SENSORS_BACK 0
+#define HAS_SPEED_SENSORS_MIDDLE 0
+#define HAS_OLED 0
+// #define HAS_LEDS_FRONT 0 // Assuming no extra LEDs for now
+// #define HAS_LEDS_BACK 0
+// #define HAS_LEDS_STATUS 0
+// #define HAS_BLUETOOTH 0 // MCU is NANO
+
+// Steering pins
+const int PIN_PWM_SL = 5; // Steer Left
+const int PIN_PWM_SR = 6; // Steer Right
+
+// Torque pins
+const int PIN_PWM_TF = 9; // Torque Forward
+const int PIN_PWM_TB = 10; // Torque Backward
+
+// Define other pins that might be used by common functions, even if features are off, to avoid compilation errors.
+// Copied from DIY, ensure these don't conflict with actual DIY_RC pins.
+// Or, ensure functions using these are guarded by their respective HAS_FEATURE flags.
+// For now, let's add common ones that might be referenced in shared code, ensuring no conflicts.
+// const int PIN_SPEED_LF = 2; // Example, not used if HAS_SPEED_SENSORS_FRONT is 0
+// const int PIN_SPEED_RF = 3; // Example
+// const int PIN_VIN = A7; // Example, not used if HAS_VOLTAGE_DIVIDER is 0
+// const int PIN_TRIGGER = 12; // Example, not used if HAS_SONAR is 0
+// const int PIN_ECHO = 11;    // Example
+// const int PIN_LED_LI = 4;   // Example, not used if HAS_INDICATORS is 0
+// const int PIN_LED_RI = 7;   // Example
 #endif
 //------------------------------------------------------//
 
@@ -752,7 +795,12 @@ void setup() {
   coast_mode = !coast_mode;
 #endif
   // Outputs
-#if (OPENBOT == RC_CAR)
+#if (OPENBOT == DIY_RC)
+  pinMode(PIN_PWM_SL, OUTPUT);
+  pinMode(PIN_PWM_SR, OUTPUT);
+  pinMode(PIN_PWM_TF, OUTPUT);
+  pinMode(PIN_PWM_TB, OUTPUT);
+#elif (OPENBOT == RC_CAR)
   pinMode(PIN_PWM_T, OUTPUT);
   pinMode(PIN_PWM_S, OUTPUT);
   // Attach the ESC and SERVO
@@ -1112,6 +1160,65 @@ float get_voltage() {
 
 #endif
 
+//-------------------------DIY_RC Motor Control-----------------------//
+void stop_diy_rc_motors() {
+    analogWrite(PIN_PWM_TF, 0);
+    analogWrite(PIN_PWM_TB, 0);
+    analogWrite(PIN_PWM_SL, 0);
+    analogWrite(PIN_PWM_SR, 0);
+}
+
+void coast_diy_rc_motors() {
+    // For this specific 4-pin setup, coasting is the same as stopping (no current to any motor pin)
+    stop_diy_rc_motors();
+}
+
+void update_diy_rc_motors() {
+    if (ctrl_left == 0 && ctrl_right == 0) {
+        if (coast_mode) {
+            coast_diy_rc_motors();
+        } else {
+            stop_diy_rc_motors(); // "Active stop" for this setup is also just powering down all 4 pins
+        }
+        return;
+    }
+
+    // Calculate overall drive command (forward/backward)
+    int drive_cmd_val = (ctrl_left + ctrl_right) / 2; // Average: positive for forward, negative for backward
+
+    // Torque control
+    if (drive_cmd_val > 0) {
+        analogWrite(PIN_PWM_TF, drive_cmd_val);
+        analogWrite(PIN_PWM_TB, 0);
+    } else if (drive_cmd_val < 0) {
+        analogWrite(PIN_PWM_TB, abs(drive_cmd_val));
+        analogWrite(PIN_PWM_TF, 0);
+    } else { // drive_cmd_val == 0 (e.g., pivoting, or motors are opposing equally)
+        analogWrite(PIN_PWM_TF, 0);
+        analogWrite(PIN_PWM_TB, 0);
+    }
+
+    // Calculate steering command
+    // If ctrl_left > ctrl_right, car should turn right. Activate PIN_PWM_SR. Power is proportional to difference.
+    // If ctrl_right > ctrl_left, car should turn left. Activate PIN_PWM_SL. Power is proportional to difference.
+    int turn_cmd_val = ctrl_left - ctrl_right; // Positive: left motor command is greater -> turn right.
+                                              // Negative: right motor command is greater -> turn left.
+    
+    int effective_turn_power = constrain(abs(turn_cmd_val) / 2, 0, 255); // Scale and cap. Division by 2 makes sense.
+
+    if (turn_cmd_val > 0) { // Left motor command is stronger/more positive: Turn Right
+        analogWrite(PIN_PWM_SR, effective_turn_power);
+        analogWrite(PIN_PWM_SL, 0);
+    } else if (turn_cmd_val < 0) { // Right motor command is stronger/more positive: Turn Left
+        analogWrite(PIN_PWM_SL, effective_turn_power);
+        analogWrite(PIN_PWM_SR, 0);
+    } else { // No difference in motor commands, so no steering input via these pins.
+        analogWrite(PIN_PWM_SL, 0);
+        analogWrite(PIN_PWM_SR, 0);
+    }
+}
+//--------------------------------------------------------------------//
+
 void update_vehicle() {
 #if (OPENBOT == RC_CAR)
   update_throttle();
@@ -1119,6 +1226,8 @@ void update_vehicle() {
 #elif (OPENBOT == MTV)
   update_left_motors_mtv();
   update_right_motors_mtv();
+#elif (OPENBOT == DIY_RC)
+  update_diy_rc_motors();
 #else
   update_left_motors();
   update_right_motors();
